@@ -4,9 +4,9 @@ import jax.numpy as jnp
 import haiku as hk
 
 
-class ResConvBlock(hk.Module):
+class ResConv2DBlock(hk.Module):
     def __init__(self, n_in, n_state):
-        super(ResConvBlock, self).__init__()
+        super(ResConv2DBlock, self).__init__()
         self.block = hk.Sequential([
             jax.nn.relu,
             hk.Conv2D(
@@ -28,11 +28,11 @@ class ResConvBlock(hk.Module):
         return x + self.block(x)
 
 
-class ResNet(hk.Module):
+class ResNet2D(hk.Module):
     def __init__(self, n_in, n_depth, m_conv=1.0):
-        super(ResNet, self).__init__()
+        super(ResNet2D, self).__init__()
         self.net = hk.Sequential(*[
-            ResConvBlock(n_in, int(m_conv * n_in)) for _ in range(n_depth)
+            ResConv2DBlock(n_in, int(m_conv * n_in)) for _ in range(n_depth)
         ])
 
     def forward(self, x):
@@ -98,33 +98,22 @@ class Resnet1D(hk.Module):
             else:
                 return depth % dilation_cycle
 
-        blocks = [ResConv1DBlock(
-            n_in, int(m_conv*n_in),
-            dilation=dilation_growth_rate ** _get_depth(depth),
-            zero_out=zero_out,
-            res_scale=1.0 if not res_scale else 1.0 / math.sqrt(n_depth)
-        )
-            for depth in range(n_depth)]
-
+        blocks = [
+            ResConv1DBlock(
+                n_in, int(m_conv*n_in),
+                dilation=dilation_growth_rate ** _get_depth(depth),
+                zero_out=zero_out,
+                res_scale=1.0 if not res_scale else 1.0 / math.sqrt(n_depth)
+             )
+            for depth in range(n_depth)
+        ]
         if reverse_dilation:
             blocks = blocks[::-1]
 
-        self.checkpoint_res = checkpoint_res
-        if self.checkpoint_res == 1:
-            # if dist.get_rank() == 0:   #requires custom util function
-            print("Checkpointing convs")
-            self.blocks = list(blocks)  #nn.ModuleList(blocks) in original, needs replicated
-        else:
-            self.model = hk.Sequential(*blocks)
+        self.net = hk.Sequential(*blocks)
 
-
-    def forward(self, x):
-        if self.checkpoint_res == 1:
-            for block in self.blocks:
-                # x = checkpoint(block, (x,), block.parameters(), True)   #another custom util required
-                return  x
-        else:
-            return  self.model(x)
+    def __call__(self, x):
+            return  self.net(x)
 
 
 
