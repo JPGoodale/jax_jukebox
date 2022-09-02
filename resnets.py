@@ -13,14 +13,14 @@ class ResConv2DBlock(hk.Module):
                 output_channels=n_state,
                 kernel_shape=3,
                 stride=1,
-                padding=1
+                padding=1,
             ),
             jax.nn.relu,
             hk.Conv2D(
                 output_channels=n_in,
                 kernel_shape=1,
                 stride=1,
-                padding=0
+                padding=0,
             )
         ])
 
@@ -78,7 +78,7 @@ class ResConv1DBlock(hk.Module):
         return x + self.res_scale * self.block(x)
 
 
-class Resnet1D(hk.Module):
+class ResNet1D(hk.Module):
     def __init__(
             self,
             n_in,
@@ -90,7 +90,7 @@ class Resnet1D(hk.Module):
             res_scale=False,
             reverse_dilation=False
     ):
-        super(Resnet1D, self).__init__()
+        super(ResNet1D, self).__init__()
 
         def _get_depth(depth):
             if dilation_cycle is None:
