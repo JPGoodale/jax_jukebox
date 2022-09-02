@@ -7,7 +7,7 @@ import haiku as hk
 class ResConv2DBlock(hk.Module):
     def __init__(self, n_in, n_state):
         super(ResConv2DBlock, self).__init__()
-        self.block = hk.Sequential([
+        self._block = hk.Sequential([
             jax.nn.relu,
             hk.Conv2D(
                 output_channels=n_state,
@@ -25,25 +25,25 @@ class ResConv2DBlock(hk.Module):
         ])
 
     def __call__(self, x):
-        return x + self.block(x)
+        return x + self._block(x)
 
 
 class ResNet2D(hk.Module):
     def __init__(self, n_in, n_depth, m_conv=1.0):
         super(ResNet2D, self).__init__()
-        self.net = hk.Sequential(*[
+        self._net = hk.Sequential(*[
             ResConv2DBlock(n_in, int(m_conv * n_in)) for _ in range(n_depth)
         ])
 
     def forward(self, x):
-        return self.net(x)
+        return self._net(x)
 
 
 class ResConv1DBlock(hk.Module):
     def __init__(self, n_in, n_state, dilation=1, zero_out=False, res_scale=1.0):
         super(ResConv1DBlock, self).__init__()
         padding = dilation
-        self.block = hk.Sequential([
+        self._block = hk.Sequential([
             jax.nn.relu,
             hk.Conv1D(
                 output_channels=n_state,
@@ -61,7 +61,7 @@ class ResConv1DBlock(hk.Module):
             )
         ])
         if zero_out:
-            out = self.block[-1]
+            out = self._block[-1]
             hk.get_parameter(
                 name='w',
                 shape=out,
@@ -75,7 +75,7 @@ class ResConv1DBlock(hk.Module):
         self.res_scale = res_scale
 
     def _call__(self, x):
-        return x + self.res_scale * self.block(x)
+        return x + self.res_scale * self._block(x)
 
 
 class ResNet1D(hk.Module):
@@ -110,7 +110,7 @@ class ResNet1D(hk.Module):
         if reverse_dilation:
             blocks = blocks[::-1]
 
-        self.net = hk.Sequential(*blocks)
+        self._net = hk.Sequential(*blocks)
 
     def __call__(self, x):
-            return  self.net(x)
+            return  self._net(x)

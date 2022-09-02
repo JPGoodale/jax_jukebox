@@ -49,10 +49,10 @@ class EncoderConvBlock(hk.Module):
                 padding=1,
             )
             blocks.append(block)
-        self.net = hk.Sequential(*[blocks])
+        self._net = hk.Sequential(*[blocks])
 
     def __call__(self, x):
-        return self.net(x)
+        return self._net(x)
 
 
 class DecoderConvBlock(hk.Module):
@@ -102,10 +102,10 @@ class DecoderConvBlock(hk.Module):
                     )
                 ])
                 blocks.append(block)
-        self.net = hk.Sequential(*[blocks])
+        self._net = hk.Sequential(*[blocks])
     
     def __call__(self, x):
-        return self.net(x)
+        return self._net(x)
 
 
 class Encoder(hk.Module):
@@ -119,11 +119,11 @@ class Encoder(hk.Module):
             **block_kwargs,
     ):
         super(Encoder, self).__init__()
-        self.input_emb_width = input_emb_width
-        self.output_emb_width = output_emb_width
-        self.levels = levels
-        self.downs_t = downs_t
-        self.strides_t = strides_t
+        self._input_emb_width = input_emb_width
+        self._output_emb_width = output_emb_width
+        self._levels = levels
+        self._downs_t = downs_t
+        self._strides_t = strides_t
         block_kwargs_copy = dict(**block_kwargs)
         if 'reverse_decoder_dilation' in block_kwargs_copy:
             del block_kwargs_copy['reverse_decoder_dilation']
@@ -135,21 +135,21 @@ class Encoder(hk.Module):
                 stride_t,
                 **block_kwargs_copy,
             )
-        self.level_blocks = []
-        iterator = zip(list(range(self.levels)), downs_t, strides_t)
+        self._level_blocks = []
+        iterator = zip(list(range(self._levels)), downs_t, strides_t)
         for level, down_t, stride_t in iterator:
-            self.level_blocks.append(level_block(level, down_t, stride_t))
+            self._level_blocks.append(level_block(level, down_t, stride_t))
 
     def __call__(self, x):
         N, T = x.shape[0], x.shape[-1]
-        emb = self.input_emb_width
+        emb = self._input_emb_width
         # assert_shape(x, (N, emb, T))  #custom util needs defined
         xs = []
-        iterator = zip(list(range(self.levels)), self.downs_t, self.strides_t)
+        iterator = zip(list(range(self._levels)), self._downs_t, self._strides_t)
         for level, down_t, stride_t in iterator:
-            level_block = self.level_blocks[level]
+            level_block = self._level_blocks[level]
             x = level_block(x)
-            emb, T = self.output_emb_width, T // (stride_t ** down_t)
+            emb, T = self._output_emb_width, T // (stride_t ** down_t)
             # assert_shape(x, (N, emb, T))  #custom util needs defined
             xs.append(x)
         return xs
@@ -166,11 +166,11 @@ class Decoder(hk.Module):
             **block_kwargs,
     ):
         super(Decoder, self).__init__()
-        self.input_emb_width = input_emb_width
-        self.output_emb_width = output_emb_width
-        self.levels = levels
-        self.downs_t = downs_t
-        self.strides_t = strides_t
+        self._input_emb_width = input_emb_width
+        self._output_emb_width = output_emb_width
+        self._levels = levels
+        self._downs_t = downs_t
+        self._strides_t = strides_t
 
         level_block = lambda level, down_t, stride_t: \
             DecoderConvBlock(
@@ -179,12 +179,12 @@ class Decoder(hk.Module):
                 stride_t,
                 **block_kwargs,
             )
-        self.level_blocks = []
-        iterator = zip(list(range(self.levels)), downs_t, strides_t)
+        self._level_blocks = []
+        iterator = zip(list(range(self._levels)), downs_t, strides_t)
         for level, down_t, stride_t in iterator:
-            self.level_blocks.append(level_block(level, down_t, stride_t))
+            self._level_blocks.append(level_block(level, down_t, stride_t))
 
-        self.out = hk.Conv1D(
+        self._out = hk.Conv1D(
             output_channels=input_emb_width,
             kernel_shape=3,
             stride=1,
@@ -193,23 +193,23 @@ class Decoder(hk.Module):
 
     def __call__(self, xs, all_levels=True):
         if all_levels:
-            assert len(xs) == self.levels
+            assert len(xs) == self._levels
         else:
             assert len(xs) == 1
         x = xs[-1]
         N, T = x.shape[0], x.shape[-1]
-        emb = self.output_emb_width
+        emb = self._output_emb_width
         # assert_shape(x, (N, emb, T))   #custom util needs defined
-        iterator = reversed(list(zip(list(range(self.levels)), self.downs_t, self.strides_t)))
+        iterator = reversed(list(zip(list(range(self._levels)), self._downs_t, self._strides_t)))
         for level, down_t, stride_t in iterator:
-            level_block = self.level_blocks[level]
+            level_block = self._level_blocks[level]
             x = level_block(x)
-            emb, T = self.output_emb_width, T * (stride_t**down_t)
+            emb, T = self._output_emb_width, T * (stride_t**down_t)
             # assert_shape(x, (N, emb, T))   #custom util needs defined
             if level != 0 and all_levels:
                 x = x + xs[level-1]
 
-        x = self.out(x)
+        x = self._out(x)
         return x
 
 
