@@ -88,8 +88,8 @@ class Resnet1D(hk.Module):
             dilation_cycle=None,
             zero_out=False,
             res_scale=False,
-            reverse_dilation=False,
-            checkpoint_res=False):
+            reverse_dilation=False
+    ):
         super(Resnet1D, self).__init__()
 
         def _get_depth(depth):
@@ -114,8 +114,3 @@ class Resnet1D(hk.Module):
 
     def __call__(self, x):
             return  self.net(x)
-
-
-
-
-
